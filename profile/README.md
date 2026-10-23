@@ -8,6 +8,7 @@ Each tool here follows the same rule: a finding is only reported when the tool c
 
 | Tool | What it does | Status |
 | --- | --- | --- |
+| [Helmbulance](https://github.com/Git-Hospital/helmbulance) | Behavioural tests for Helm charts: installs a chart on a throwaway kind cluster and runs day-2 scenarios such as upgrades without values, reinstalls and Secret rotation. A finding is only reported when it reproduces on the cluster. | pre-release |
 | [MeshMedic](https://github.com/Git-Hospital/meshmedic) | Watches Istio's Prometheus telemetry, matches a human-reviewed catalog of failure scenarios, and opens a GitOps pull request with the diagnosis, evidence and rollback plan. No LLM, no cluster writes. | v1.0.0 |
 | [mesh-incidents-bench](https://github.com/Git-Hospital/mesh-incidents-bench) | 11 reproducible service mesh failure scenarios with ground truth, for scoring diagnostic and remediation tools. Misses are published, including our own. | scenarios and results |
 | [GitHealthCheck](https://github.com/Git-Hospital/githealthcheck) | Code health analyzer for Git repositories: tests, history, complexity, architecture. Every number is a measurement, or null with a reason. | Go rewrite in progress |
