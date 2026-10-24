@@ -1,0 +1,54 @@
+name: vitals
+
+# Redraws the patient monitors on the organization profile from the GitHub API
+# and pushes them to the `vitals` branch, which profile/README.md links to.
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["profile/src/**", ".github/workflows/vitals.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vitals
+  cancel-in-progress: false
+
+jobs:
+  vitals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install fonttools==4.* brotli==1.*
+      - name: Draw the monitors
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python profile/src/hospital.py vitals --out "$RUNNER_TEMP/vitals"
+      - name: Push to the vitals branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin vitals >/dev/null; then
+            git fetch --depth=1 origin vitals
+            git worktree add "$RUNNER_TEMP/out" FETCH_HEAD
+            git -C "$RUNNER_TEMP/out" switch -c vitals
+          else
+            git worktree add --orphan -b vitals "$RUNNER_TEMP/out"
+          fi
+          cp "$RUNNER_TEMP"/vitals/*.svg "$RUNNER_TEMP/out/"
+          cd "$RUNNER_TEMP/out"
+          git add -- *.svg
+          if git diff --cached --quiet; then
+            echo "No change."
+          else
+            git commit -q -m "Update vitals $(date -u +%F)"
+            git push origin HEAD:vitals
+          fi
