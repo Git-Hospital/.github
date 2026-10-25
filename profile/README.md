@@ -9,7 +9,7 @@ Tell us the symptom, we send you to the right ward.
 | *"The chart installed fine. The upgrade, the reinstall or the Secret rotation broke it."* | Emergency · [Helmbulance](https://github.com/Git-Hospital/helmbulance) | Installs the chart on a throwaway kind cluster and replays day-2 scenarios. A finding is reported when it reproduces on the cluster. |
 | *"Istio is throwing 503s and nobody knows which policy did it."* | Intensive care · [MeshMedic](https://github.com/Git-Hospital/meshmedic) | Reads Istio's Prometheus telemetry, matches a human-reviewed catalog of failure scenarios and opens a GitOps pull request with the diagnosis, the evidence and a rollback plan. No LLM, no writes to the cluster. |
 | *"Our diagnosis tool says it works. Does it?"* | Clinical trials · [boards](https://github.com/Git-Hospital/boards) | In development: a benchmark of known defects, clean twins and hand-verified values that scores what a tool finds and whether its fix works once applied. |
-| *"How healthy is this repository, really?"* | Check-up · [GitHealthCheck](https://github.com/Git-Hospital/githealthcheck) | Being rewritten in Go: a code health analyzer for tests, history and complexity, where every number is a measurement or null with the reason it could not be measured. |
+| *"How healthy is this repository, really?"* | Check-up · [GitHealthCheck](https://github.com/Git-Hospital/githealthcheck) | A code health analyzer for tests, history and complexity (Go today, v0.2.0), where every number is a measurement or null with the reason it could not be measured. |
 
 ## Wards
 
