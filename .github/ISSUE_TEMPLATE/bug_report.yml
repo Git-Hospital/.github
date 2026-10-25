@@ -1,0 +1,42 @@
+name: Bug report
+description: A tool printed something wrong, crashed, or missed what it should have found.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems do not go here. Use **Report a vulnerability** on the repository's Security tab.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `<tool> version`, or the commit you built from.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: What you ran
+      description: The exact command, and the input it ran against (a chart, a repository, a Prometheus query) if it is public.
+      render: console
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The output, trimmed to the part that is wrong. Remove anything private.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and why
+      description: For a wrong finding or a missed one, what you checked to know the tool is wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, and the versions that matter for this tool (Kubernetes, Istio, Helm, git, Go).
