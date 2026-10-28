@@ -638,10 +638,13 @@ def cases_of(token):
             except (urllib.error.URLError, KeyError) as e:
                 print(f"cases: {repo}#{pr or issue}: {e}")
                 status = "UNKNOWN"
+            # A failed lookup must not show an open check as merged, so it counts as still in review,
+            # as case_status falls back to UNKNOWN rather than to a state it did not see.
             try:
                 pending = bool(check) and not check_merged(check, token)
-            except (urllib.error.URLError, KeyError):
-                pending = False
+            except (urllib.error.URLError, KeyError) as e:
+                print(f"cases: helmbulance#{check}: {e}")
+                pending = True
             out.append({"group": group, "chart": chart, "what": what, "finding": finding,
                         "ref": f"{repo.split('/')[0]}#{pr or issue}", "status": status, "pending": pending})
     return out
