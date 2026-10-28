@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Draw the Git Hospital organization profile.
 
-  python3 profile/src/hospital.py hero            -> profile/assets/hospital.svg, profile/assets/logo.svg
-  python3 profile/src/hospital.py vitals --out D  -> D/<repo>.svg, one patient monitor per tool
+  python3 profile/src/hospital.py hero            -> profile/assets/{hospital,logo,pathway}.svg
+  python3 profile/src/hospital.py vitals --out D  -> D/<repo>.svg, one patient monitor per tool,
+                                                     and D/cases.svg, the case board
 
-The monitors show live numbers from the GitHub API, so a scheduled workflow
+The monitors and the case board show live numbers from the GitHub API, so a scheduled workflow
 (.github/workflows/vitals.yml) redraws them every day and pushes them to the
 `vitals` branch. Set GH_TOKEN to avoid the anonymous rate limit.
 
@@ -324,6 +325,89 @@ def logo() -> str:
     return c.svg(512, 512, "Git Hospital logo: a red cross with a git branch", "")
 
 
+# ---------------------------------------------------------------- pathway: how the wards fit together
+
+STATIONS = [  # name, two lines on what happens there, the tools or outputs that do it
+    ("SYMPTOM", ("Day two breaks: an upgrade,", "a 503, a repo nobody trusts"), ()),
+    ("TRIAGE", ("Match the symptom", "to the ward that treats it"), ("triage desk",)),
+    ("DIAGNOSIS", ("Reproduce it: a throwaway", "cluster, telemetry or git"), ("Helmbulance", "MeshMedic", "GitHealthCheck")),
+    ("EVIDENCE", ("Commands, events, measures,", "or null with the reason"), ("Markdown", "JSON", "SARIF")),
+    ("TREATMENT", ("A fix a person reviews:", "a patch or a pull request"), ("MeshMedic", "Helmbulance")),
+    ("SECOND OPINION", ("Score the tools on known", "defects and clean twins"), ("boards",)),
+]
+
+
+def pathway() -> str:
+    W, H, base = 1200, 400, 178
+    c = Canvas()
+    xs = [110 + i * 196 for i in range(len(STATIONS))]
+    # a flat line with one heartbeat between each pair of stations
+    blip = [(0, 0), (8, -5), (14, 0), (20, 0), (24, 7), (29, -34), (34, 14), (38, 0)]
+    pts = [(48, base)]
+    for a, b in zip(xs, xs[1:]):
+        mid = (a + b) / 2 - 19
+        pts += [(a, base)] + [(mid + dx, base + dy) for dx, dy in blip]
+    pts += [(xs[-1], base), (W - 48, base)]
+    path = "M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in pts)
+    run = [0.0]  # distance along the line to each point
+    for p, q in zip(pts, pts[1:]):
+        run.append(run[-1] + math.dist(p, q))
+    length, cycle = math.ceil(run[-1]), 7.0
+    at = {x: run[pts.index((x, base))] for x in xs}
+
+    c.add("<defs>", GLOW_FILTER,
+          '<pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">'
+          f'<path d="M24 0H0V24" fill="none" stroke="{GREEN}" stroke-opacity=".05"/></pattern>',
+          f'<radialGradient id="halo"><stop offset="0" stop-color="{GREEN}" stop-opacity=".45"/>'
+          f'<stop offset="1" stop-color="{GREEN}" stop-opacity="0"/></radialGradient>',
+          "</defs>",
+          f'<rect x=".5" y=".5" width="{W - 1}" height="{H - 1}" rx="22" fill="#1d1916" stroke="{BORDER}"/>',
+          f'<rect x="16" y="16" width="{W - 32}" height="{H - 32}" rx="14" fill="#060807"/>',
+          f'<rect x="16" y="16" width="{W - 32}" height="{H - 32}" rx="14" fill="url(#grid)"/>')
+    c.text(48, 58, "lbl", "PATIENT PATHWAY", "mono")
+    c.text(48, 100, "head", "From a symptom to a fix you can review", "display")
+    c.text(W - 48, 58, "lbl", "EVERY STEP LEAVES EVIDENCE", "mono", text_anchor="end")
+
+    c.add(f'<path d="{path}" fill="none" stroke="{GREEN}" stroke-opacity=".18" stroke-width="2" stroke-linejoin="round"/>',
+          f'<path class="pulse" d="{path}" fill="none" stroke="{GREEN}" stroke-width="2.5" stroke-linejoin="round" '
+          f'stroke-linecap="round" filter="url(#neon)"/>')
+    for i, (x, (name, lines, chips)) in enumerate(zip(xs, STATIONS)):
+        delay = cycle * at[x] / (length + 140)  # light up as the head of the pulse arrives
+        c.add(f'<circle class="halo" style="animation-delay:{delay:.2f}s" cx="{x}" cy="{base}" r="34" fill="url(#halo)"/>',
+              f'<circle cx="{x}" cy="{base}" r="17" fill="#060807" stroke="{GREEN}" stroke-opacity=".55" stroke-width="2"/>',
+              f'<circle class="node" style="animation-delay:{delay:.2f}s" cx="{x}" cy="{base}" r="17" fill="none" '
+              f'stroke="{GREEN}" stroke-width="2.5" filter="url(#neon)"/>')
+        c.text(x, base + 5, "num", f"{i + 1:02d}", "mono", text_anchor="middle")
+        c.text(x, base + 52, "stn", name, "mono", text_anchor="middle")
+        for k, line in enumerate(lines):
+            c.text(x, base + 76 + k * 18, "desc", line, "sans4", text_anchor="middle")
+        for k, chip in enumerate(chips):
+            w = 18 + 7.8 * len(chip)
+            y = base + 112 + k * 28
+            c.add(f'<rect x="{x - w / 2:.1f}" y="{y}" width="{w:.1f}" height="21" rx="10.5" fill="{GREEN}" '
+                  f'fill-opacity=".08" stroke="{GREEN}" stroke-opacity=".35"/>')
+            c.text(x, y + 15, "chip", chip, "mono", text_anchor="middle")
+
+    css = f"""
+.lbl  {{ font: 500 12px 'Mono', monospace; fill: {MUTED}; letter-spacing: 1.6px; }}
+.head {{ font: 600 30px 'Display', Georgia, serif; fill: {INK50}; letter-spacing: -.3px; }}
+.num  {{ font: 500 12px 'Mono', monospace; fill: {GREEN}; }}
+.stn  {{ font: 500 13px 'Mono', monospace; fill: {INK50}; letter-spacing: 1.6px; }}
+.desc {{ font: 400 13.5px 'Sans', 'Helvetica Neue', Arial, sans-serif; fill: {INK400}; }}
+.chip {{ font: 500 12px 'Mono', monospace; fill: {INK200}; }}
+.pulse {{ stroke-dasharray: 140 {length}; animation: travel {cycle}s linear infinite; }}
+.node  {{ opacity: 0; animation: node {cycle}s ease-out infinite; }}
+.halo  {{ opacity: 0; animation: node {cycle}s ease-out infinite; }}
+@keyframes travel {{ from {{ stroke-dashoffset: 140; }} to {{ stroke-dashoffset: -{length}; }} }}
+@keyframes node {{ 0% {{ opacity: 1; }} 18% {{ opacity: 0; }} 100% {{ opacity: 0; }} }}
+@media (prefers-reduced-motion: reduce) {{ .node {{ opacity: 1; }} .pulse {{ stroke-dasharray: none; }} }}
+"""
+    label = ("Patient pathway, from a symptom to a fix you can review: " + "; ".join(
+        f"{i + 1}. {name.lower()}: {' '.join(lines)}" + (f" ({', '.join(chips)})" if chips else "")
+        for i, (name, lines, chips) in enumerate(STATIONS)) + ".")
+    return c.svg(W, H, label, css)
+
+
 # ---------------------------------------------------------------- vitals: one patient monitor per tool
 
 def api(path, token, tries=4):
@@ -488,6 +572,148 @@ def monitor(index, name, bed, desc, v, now) -> str:
     return c.svg(W, H, label, css)
 
 
+# ---------------------------------------------------------------- case board: bugs found in public charts
+
+# Each case was reproduced on kind before it went upstream. Status is read live from the upstream issue
+# and pull request; `check` is the Helmbulance pull request that adds the check, while it is not merged.
+# chart, what broke, finding, upstream repo, issue, fix pull request, Helmbulance pull request with the check
+OURS = [
+    ("SeaweedFS", "First upgrade restarts the filer and S3 gateway", "HB-UV-003", "seaweedfs/seaweedfs", 11719, 11720, None),
+    ("JupyterHub", "First upgrade restarts the hub and the proxy", "HB-UV-003", "jupyterhub/zero-to-jupyterhub-k8s", 3996, 3997, None),
+    ("Semaphore", "First upgrade restarts Semaphore", "HB-UV-003", "semaphoreui/charts", 34, 35, None),
+    ("yugabyte", "Patch release changes a selector; upgrades fail", "HB-CU-001", "yugabyte/charts", 240, None, None),
+    ("SeaweedFS", "Unquoted number or boolean in env fails install", "HB-SCAN-004", "seaweedfs/seaweedfs", None, 12137, 42),
+    ("SeaweedFS", "Reinstall writes a new filer database password", "HB-RI-004", "seaweedfs/seaweedfs", None, 12138, 43),
+]
+CONFIRMED = [  # reported by others, reproduced with Helmbulance
+    ("Jenkins", "Argo CD replaces the admin password on every sync", "HB-GR-001", "jenkinsci/helm-charts", 1026, None, None),
+    ("docker-registry", "haSharedSecret changes on every upgrade", "HB-UV-001", "twuni/docker-registry.helm", 187, None, None),
+    ("docker-registry-ui", "App version in the selector breaks upgrades", "HB-SCAN-001", "Joxit/helm-charts", None, 22, None),
+    ("grafana", "Admin password changes on every upgrade", "HB-UV-001", "grafana/helm-charts", 10, 62, None),
+]
+CASE_STATUS = {  # label, fill, ink
+    "FIXED": ("FIXED", GREEN, "#06210f"),
+    "APPROVED": ("FIX APPROVED", AMBER, "#2a1a05"),
+    "IN REVIEW": ("FIX IN REVIEW", BLUE, INK50),
+    "REPORTED": ("REPORTED", INK600, INK50),
+    "CLOSED": ("CLOSED", "#2a221d", INK400),
+}
+
+
+def case_status(repo, issue, pr, token):
+    """FIXED, APPROVED, IN REVIEW, REPORTED or CLOSED, from the fix pull request first, then the issue."""
+    if pr:
+        p, _ = api(f"repos/{repo}/issues/{pr}", token)
+        if p["pull_request"].get("merged_at"):
+            return "FIXED"
+        if p["state"] == "open":
+            latest = {}
+            for r in paged(f"repos/{repo}/pulls/{pr}/reviews", token):
+                if r["state"] in ("APPROVED", "CHANGES_REQUESTED", "DISMISSED"):
+                    latest[r["user"]["login"]] = r["state"]
+            states = set(latest.values())
+            return "APPROVED" if "APPROVED" in states and "CHANGES_REQUESTED" not in states else "IN REVIEW"
+    if issue:
+        i, _ = api(f"repos/{repo}/issues/{issue}", token)
+        if i["state"] == "open":
+            return "REPORTED"
+        return "FIXED" if i.get("state_reason") == "completed" else "CLOSED"
+    return "CLOSED"
+
+
+def check_merged(pr, token):
+    p, _ = api(f"repos/{ORG}/helmbulance/issues/{pr}", token)
+    return bool(p["pull_request"].get("merged_at"))
+
+
+def cases_of(token):
+    out = []
+    for group, rows in (("ours", OURS), ("confirmed", CONFIRMED)):
+        for chart, what, finding, repo, issue, pr, check in rows:
+            out.append({"group": group, "chart": chart, "what": what, "finding": finding,
+                        "ref": f"{repo.split('/')[0]}#{pr or issue}",
+                        "status": case_status(repo, issue, pr, token),
+                        "pending": bool(check) and not check_merged(check, token)})
+    return out
+
+
+def caseboard(cases, now) -> str:
+    W, row, top = 1200, 38, 176
+    groups = [("REPORTED BY US", [k for k in cases if k["group"] == "ours"]),
+              ("REPORTED BY OTHERS · REPRODUCED WITH HELMBULANCE", [k for k in cases if k["group"] == "confirmed"])]
+    H = top + sum(36 + row * len(rows) for _, rows in groups) + 56
+    c = Canvas()
+    c.add("<defs>", GLOW_FILTER,
+          f'<linearGradient id="scan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{GREEN}" stop-opacity="0"/>'
+          f'<stop offset="1" stop-color="{GREEN}" stop-opacity=".07"/></linearGradient>',
+          f'<clipPath id="screen"><rect x="16" y="16" width="{W - 32}" height="{H - 32}" rx="14"/></clipPath>',
+          "</defs>",
+          f'<rect x=".5" y=".5" width="{W - 1}" height="{H - 1}" rx="22" fill="#1d1916" stroke="{BORDER}"/>',
+          f'<rect x="16" y="16" width="{W - 32}" height="{H - 32}" rx="14" fill="#0b0908"/>',
+          f'<g clip-path="url(#screen)"><rect class="scan" x="16" y="-120" width="{W - 32}" height="120" fill="url(#scan)"/></g>')
+    c.text(48, 58, "lbl", "CASE BOARD · UPSTREAM", "mono")
+    c.text(48, 100, "head", "Bugs found in public Helm charts", "display")
+    c.text(48, 128, "sub", "Each one reproduced on a throwaway kind cluster before it went upstream.", "sans4")
+
+    fixed = sum(k["status"] == "FIXED" for k in cases)
+    review = sum(k["status"] in ("APPROVED", "IN REVIEW") for k in cases)
+    tallies = [("CASES", len(cases), INK50), ("REPORTED BY US", len(groups[0][1]), INK50),
+               ("FIX IN REVIEW", review, AMBER), ("FIXED UPSTREAM", fixed, GREEN)]
+    for i, (label, n, col) in enumerate(reversed(tallies)):
+        x = W - 48 - i * 150
+        c.text(x, 58, "lbl", label, "mono", text_anchor="end")
+        c.text(x, 104, "big", str(n), "mono", text_anchor="end", fill=col)
+
+    y = top
+    for title, rows in groups:
+        c.add(f'<line x1="48" y1="{y}" x2="{W - 48}" y2="{y}" stroke="{BORDER}"/>')
+        c.text(48, y + 24, "lbl", title, "mono")
+        y += 36
+        for k in rows:
+            label, fill, ink = CASE_STATUS[k["status"]]
+            mid = y + row / 2
+            if k["status"] != "FIXED":
+                c.add(f'<circle class="led" cx="56" cy="{mid}" r="4" fill="{fill}" filter="url(#neon)" '
+                      f'style="animation-delay:-{(y % 7) / 3:.2f}s"/>')
+            else:
+                c.add(f'<circle cx="56" cy="{mid}" r="4" fill="{fill}"/>')
+            c.add(f'<rect x="72" y="{mid - 11}" width="128" height="22" rx="4" fill="{fill}" fill-opacity=".9"/>')
+            c.text(136, mid + 4.5, "pill", label, "mono", text_anchor="middle", fill=ink)
+            c.text(222, mid + 5, "chart", k["chart"], "sans5")
+            c.text(392, mid + 5, "what", k["what"], "sans4")
+            c.text(786, mid + 4.5, "find", k["finding"], "mono")
+            if k["pending"]:
+                c.text(786 + 8.4 * len(k["finding"]) + 8, mid + 4.5, "note", "check in review", "mono")
+            c.text(W - 48, mid + 4.5, "ref", k["ref"], "mono", text_anchor="end")
+            c.add(f'<line x1="72" y1="{y + row}" x2="{W - 48}" y2="{y + row}" stroke="{BORDER}" stroke-opacity=".45"/>')
+            y += row
+    c.text(48, H - 34, "foot", f"checked {now:%Y-%m-%d %H:%M} UTC from the GitHub API", "mono")
+    c.text(W - 48, H - 34, "foot", "details: github.com/Git-Hospital/helmbulance#found-in-public-charts", "mono", text_anchor="end")
+
+    css = f"""
+.lbl   {{ font: 500 12px 'Mono', monospace; fill: {MUTED}; letter-spacing: 1.6px; }}
+.head  {{ font: 600 30px 'Display', Georgia, serif; fill: {INK50}; letter-spacing: -.3px; }}
+.sub   {{ font: 400 15px 'Sans', 'Helvetica Neue', Arial, sans-serif; fill: {INK400}; }}
+.big   {{ font: 500 36px 'Mono', monospace; }}
+.pill  {{ font: 500 11px 'Mono', monospace; letter-spacing: 1.2px; }}
+.chart {{ font: 500 15px 'Sans', 'Helvetica Neue', Arial, sans-serif; fill: {INK50}; }}
+.what  {{ font: 400 14.5px 'Sans', 'Helvetica Neue', Arial, sans-serif; fill: {INK200}; }}
+.find  {{ font: 500 13px 'Mono', monospace; fill: {GREEN}; }}
+.note  {{ font: 500 11px 'Mono', monospace; fill: {AMBER}; }}
+.ref   {{ font: 500 13px 'Mono', monospace; fill: {INK400}; }}
+.foot  {{ font: 500 11px 'Mono', monospace; fill: {INK600}; }}
+.led   {{ animation: led 2.2s ease-in-out infinite; }}
+.scan  {{ animation: scan 9s linear infinite; }}
+@keyframes led  {{ 50% {{ opacity: .25; }} }}
+@keyframes scan {{ from {{ transform: translateY(0); }} to {{ transform: translateY({H + 120}px); }} }}
+"""
+    label = ("Case board: bugs found in public Helm charts, each reproduced on a throwaway kind cluster. " +
+             f"{len(cases)} cases, {len(groups[0][1])} reported by us, {review} with a fix in review, {fixed} fixed upstream. " +
+             " ".join(f"{k['chart']}: {k['what']} ({k['finding']}, {k['ref']}, {CASE_STATUS[k['status']][0].lower()})."
+                      for k in cases) + f" Checked {now:%Y-%m-%d} from the GitHub API.")
+    return c.svg(W, H, label, css)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("what", choices=("hero", "vitals"))
@@ -495,12 +721,13 @@ def main():
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     if args.what == "hero":
-        files = {"hospital.svg": hero(), "logo.svg": logo()}
+        files = {"hospital.svg": hero(), "logo.svg": logo(), "pathway.svg": pathway()}
     else:
         token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
         now = dt.datetime.now(dt.timezone.utc)
         files = {f"{repo}.svg": monitor(i + 1, name, bed, desc, vitals_of(repo, token, now), now)
                  for i, (repo, name, bed, desc) in enumerate(WARDS)}
+        files["cases.svg"] = caseboard(cases_of(token), now)
     for fname, content in files.items():
         (args.out / fname).write_text(content)
         print(f"{args.out / fname}  {len(content) // 1024} KB")
