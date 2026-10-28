@@ -11,12 +11,12 @@
 
 Tell us the symptom, we send you to the right ward.
 
-| Symptom | Ward | Treatment | Status |
-| --- | --- | --- | --- |
-| *"The chart installed fine. The upgrade, the reinstall or the Secret rotation broke it."* | Emergency · [Helmbulance](https://github.com/Git-Hospital/helmbulance) | Installs the chart on a throwaway kind cluster and replays day-2 scenarios. A finding is reported when it reproduces on the cluster. | Pre-release; v0.1 planned for 8 November 2026 |
-| *"Istio is throwing 503s and nobody knows which policy did it."* | Intensive care · [MeshMedic](https://github.com/Git-Hospital/meshmedic) | Reads Istio's Prometheus telemetry, matches a human-reviewed catalog of failure scenarios and opens a GitOps pull request with the diagnosis, the evidence and a rollback plan. No LLM, no writes to the cluster. | v1.0.0 |
-| *"Our diagnosis tool says it works. Does it?"* | Clinical trials · [boards](https://github.com/Git-Hospital/boards) | A benchmark of known defects, clean twins and hand-verified values that scores what a tool finds and whether its fix works once applied. One track today: eleven Istio ambient incidents. | In development |
-| *"How healthy is this repository, really?"* | Check-up · [GitHealthCheck](https://github.com/Git-Hospital/githealthcheck) | A code health analyzer for tests, history and complexity, where every number is a measurement or null with the reason it could not be measured. Go and Python are analysed. | v0.3.0 |
+| Symptom | Ward | Treatment |
+| --- | --- | --- |
+| *"The chart installed fine. The upgrade, the reinstall or the Secret rotation broke it."* | Emergency · [Helmbulance](https://github.com/Git-Hospital/helmbulance) | Installs the chart on a throwaway kind cluster and replays day-2 scenarios. A finding is reported when it reproduces on the cluster. |
+| *"Istio is throwing 503s and nobody knows which policy did it."* | Intensive care · [MeshMedic](https://github.com/Git-Hospital/meshmedic) | Reads Istio's Prometheus telemetry, matches a human-reviewed catalog of failure scenarios and opens a GitOps pull request with the diagnosis, the evidence and a rollback plan. No LLM, no writes to the cluster. |
+| *"Our diagnosis tool says it works. Does it?"* | Clinical trials · [boards](https://github.com/Git-Hospital/boards) | A benchmark of known defects, clean twins and hand-verified values that scores what a tool finds and whether its fix works once applied. One track today: eleven Istio ambient incidents. |
+| *"How healthy is this repository, really?"* | Check-up · [GitHealthCheck](https://github.com/Git-Hospital/githealthcheck) | A code health analyzer for tests, history and complexity, where every number is a measurement or null with the reason it could not be measured. Go and Python are analysed. |
 
 ## Wards
 
@@ -43,23 +43,23 @@ Tell us the symptom, we send you to the right ward.
 
 <sub>The board is live too: each status is read from the upstream issue and pull request every morning.
 <b>FIXED</b>: the fix is merged. <b>FIX APPROVED</b>: a maintainer approved it. <b>FIX IN REVIEW</b>: a fix is open.
-<b>REPORTED</b>: the issue is open with no fix yet. <b>check in review</b>: the Helmbulance check that finds it is not merged yet.</sub>
+<b>REPORTED</b>: the issue is open with no fix yet. <b>UNKNOWN</b>: the upstream lookup failed this morning. <b>check in review</b>: the Helmbulance check that finds it is not merged yet.</sub>
 
 <details>
 <summary><b>The cases, with links</b></summary>
 
 | Chart | What broke | Found by | Upstream |
-| --- | --- | --- | --- |
+| --- | --- | --- |
 | SeaweedFS | The first upgrade after install restarts the filer and the S3 gateway | `upgrade-without-values` (HB-UV-003) | [#11719](https://github.com/seaweedfs/seaweedfs/issues/11719), fix [#11720](https://github.com/seaweedfs/seaweedfs/pull/11720) |
 | JupyterHub | The same restart, for the hub and the proxy | `upgrade-without-values` (HB-UV-003) | [#3996](https://github.com/jupyterhub/zero-to-jupyterhub-k8s/issues/3996), fix [#3997](https://github.com/jupyterhub/zero-to-jupyterhub-k8s/pull/3997) |
 | Semaphore | The same restart | `upgrade-without-values` (HB-UV-003) | [#34](https://github.com/semaphoreui/charts/issues/34), fix [#35](https://github.com/semaphoreui/charts/pull/35) |
-| yugabyte | Patch release 2026.1.2 changes a StatefulSet selector, so upgrades from 2026.1.0 and 2026.1.1 fail | `scan`, confirmed by `chart-upgrade` (HB-CU-001) | [#240](https://github.com/yugabyte/charts/issues/240) |
-| SeaweedFS | An unquoted number or boolean in `extraEnvironmentVars` fails the install | `scan` (HB-SCAN-004) | fix [#12137](https://github.com/seaweedfs/seaweedfs/pull/12137) |
-| SeaweedFS | With the MySQL filer store, a reinstall writes a new database password | `reinstall` (HB-RI-004) | fix [#12138](https://github.com/seaweedfs/seaweedfs/pull/12138) |
-| Jenkins | Without cluster access the admin password is new on every render, so Argo CD replaces it on every sync | `gitops-render` (HB-GR-001) | [#1026](https://github.com/jenkinsci/helm-charts/issues/1026), reported by others |
+| yugabyte | Patch release 2026.1.2 changes a StatefulSet selector, so with the default `oldNamingStyle: true` upgrades from 2026.1.0 and 2026.1.1 fail | `scan`, confirmed by `chart-upgrade` (HB-CU-001) | [#240](https://github.com/yugabyte/charts/issues/240) |
+| SeaweedFS | An unquoted number or boolean in `extraEnvironmentVars` fails the install | found by hand; caught by `scan` (HB-SCAN-004) | fix [#12137](https://github.com/seaweedfs/seaweedfs/pull/12137) |
+| SeaweedFS | With the MySQL filer store, a reinstall writes a new database password | found by hand; caught by `reinstall` (HB-RI-004) | fix [#12138](https://github.com/seaweedfs/seaweedfs/pull/12138) |
+| Jenkins | Rendered without cluster access, as Argo CD renders it, the admin password is new on every render, so every sync replaces it | `gitops-render` (HB-GR-001) | [#1026](https://github.com/jenkinsci/helm-charts/issues/1026), reported by others |
 | docker-registry | `haSharedSecret` changes on every upgrade | `upgrade-without-values` (HB-UV-001) | [#187](https://github.com/twuni/docker-registry.helm/issues/187), reported by others |
 | docker-registry-ui | The app version in the Deployment selector breaks every upgrade that changes it | `scan` (HB-SCAN-001) | fix [#22](https://github.com/Joxit/helm-charts/pull/22) by others, verified with Helmbulance |
-| grafana 6.9.2 | The admin password changes on every upgrade | `upgrade-without-values` (HB-UV-001) | [#10](https://github.com/grafana/helm-charts/issues/10), fix [#62](https://github.com/grafana/helm-charts/pull/62), reported by others |
+| grafana 6.9.2 | The admin password changes on every upgrade | `upgrade-without-values` (HB-UV-001) | admin password fixed by [#62](https://github.com/grafana/helm-charts/pull/62); [#10](https://github.com/grafana/helm-charts/issues/10), which reports the restart, still open; reported by others |
 
 </details>
 

@@ -597,6 +597,7 @@ CASE_STATUS = {  # label, fill, ink
     "IN REVIEW": ("FIX IN REVIEW", BLUE, INK50),
     "REPORTED": ("REPORTED", INK600, INK50),
     "CLOSED": ("CLOSED", "#2a221d", INK400),
+    "UNKNOWN": ("UNKNOWN", "#2a221d", INK400),  # the upstream lookup failed this time
 }
 
 
@@ -627,13 +628,22 @@ def check_merged(pr, token):
 
 
 def cases_of(token):
+    """One failed lookup (a deleted or renamed repository, a 404) shows that case as UNKNOWN, so the
+    board and the monitors are still drawn."""
     out = []
     for group, rows in (("ours", OURS), ("confirmed", CONFIRMED)):
         for chart, what, finding, repo, issue, pr, check in rows:
+            try:
+                status = case_status(repo, issue, pr, token)
+            except (urllib.error.URLError, KeyError) as e:
+                print(f"cases: {repo}#{pr or issue}: {e}")
+                status = "UNKNOWN"
+            try:
+                pending = bool(check) and not check_merged(check, token)
+            except (urllib.error.URLError, KeyError):
+                pending = False
             out.append({"group": group, "chart": chart, "what": what, "finding": finding,
-                        "ref": f"{repo.split('/')[0]}#{pr or issue}",
-                        "status": case_status(repo, issue, pr, token),
-                        "pending": bool(check) and not check_merged(check, token)})
+                        "ref": f"{repo.split('/')[0]}#{pr or issue}", "status": status, "pending": pending})
     return out
 
 
@@ -653,14 +663,14 @@ def caseboard(cases, now) -> str:
           f'<g clip-path="url(#screen)"><rect class="scan" x="16" y="-120" width="{W - 32}" height="120" fill="url(#scan)"/></g>')
     c.text(48, 58, "lbl", "CASE BOARD · UPSTREAM", "mono")
     c.text(48, 100, "head", "Bugs found in public Helm charts", "display")
-    c.text(48, 128, "sub", "Each one reproduced on a throwaway kind cluster before it went upstream.", "sans4")
+    c.text(48, 128, "sub", "Every case was reproduced with Helmbulance before it was listed.", "sans4")
 
-    fixed = sum(k["status"] == "FIXED" for k in cases)
+    fixed = sum(k["status"] == "FIXED" for k in cases if k["group"] == "ours")
     review = sum(k["status"] in ("APPROVED", "IN REVIEW") for k in cases)
     tallies = [("CASES", len(cases), INK50), ("REPORTED BY US", len(groups[0][1]), INK50),
-               ("FIX IN REVIEW", review, AMBER), ("FIXED UPSTREAM", fixed, GREEN)]
+               ("FIX IN REVIEW", review, AMBER), ("OUR FIXES MERGED", fixed, GREEN)]
     for i, (label, n, col) in enumerate(reversed(tallies)):
-        x = W - 48 - i * 150
+        x = W - 48 - i * 175
         c.text(x, 58, "lbl", label, "mono", text_anchor="end")
         c.text(x, 104, "big", str(n), "mono", text_anchor="end", fill=col)
 
@@ -708,7 +718,7 @@ def caseboard(cases, now) -> str:
 @keyframes scan {{ from {{ transform: translateY(0); }} to {{ transform: translateY({H + 120}px); }} }}
 """
     label = ("Case board: bugs found in public Helm charts, each reproduced on a throwaway kind cluster. " +
-             f"{len(cases)} cases, {len(groups[0][1])} reported by us, {review} with a fix in review, {fixed} fixed upstream. " +
+             f"{len(cases)} cases, {len(groups[0][1])} reported by us, {review} with a fix in review, {fixed} of ours fixed upstream. " +
              " ".join(f"{k['chart']}: {k['what']} ({k['finding']}, {k['ref']}, {CASE_STATUS[k['status']][0].lower()})."
                       for k in cases) + f" Checked {now:%Y-%m-%d} from the GitHub API.")
     return c.svg(W, H, label, css)
