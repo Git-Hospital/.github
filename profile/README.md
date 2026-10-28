@@ -49,7 +49,7 @@ Tell us the symptom, we send you to the right ward.
 <summary><b>The cases, with links</b></summary>
 
 | Chart | What broke | Found by | Upstream |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | SeaweedFS | The first upgrade after install restarts the filer and the S3 gateway | `upgrade-without-values` (HB-UV-003) | [#11719](https://github.com/seaweedfs/seaweedfs/issues/11719), fix [#11720](https://github.com/seaweedfs/seaweedfs/pull/11720) |
 | JupyterHub | The same restart, for the hub and the proxy | `upgrade-without-values` (HB-UV-003) | [#3996](https://github.com/jupyterhub/zero-to-jupyterhub-k8s/issues/3996), fix [#3997](https://github.com/jupyterhub/zero-to-jupyterhub-k8s/pull/3997) |
 | Semaphore | The same restart | `upgrade-without-values` (HB-UV-003) | [#34](https://github.com/semaphoreui/charts/issues/34), fix [#35](https://github.com/semaphoreui/charts/pull/35) |
